@@ -154,7 +154,14 @@ TOOLS: list[dict[str, Any]] = [
     },
 ]
 
-groq_client = Groq(api_key=settings.GROQ_API_KEY)
+_groq_client: Groq | None = None
+
+
+def _get_groq_client() -> Groq:
+    global _groq_client
+    if _groq_client is None:
+        _groq_client = Groq(api_key=settings.GROQ_API_KEY)
+    return _groq_client
 
 
 def _execute_tool(tool_name: str, arguments: dict[str, Any], db: Session) -> dict:
@@ -186,8 +193,18 @@ def chat_with_tools(*, message: str, history: list[dict[str, str]], db: Session)
     messages.extend(history)
     messages.append({"role": "user", "content": message})
 
+    try:
+        client = _get_groq_client()
+    except Exception as exc:
+        fallback = f"LLM service initialization failed: {str(exc)}"
+        updated_history = history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": fallback},
+        ]
+        return fallback, updated_history
+
     for _ in range(MAX_TOOL_ITERATIONS):
-        response = groq_client.chat.completions.create(
+        response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=messages,
             tools=TOOLS,
