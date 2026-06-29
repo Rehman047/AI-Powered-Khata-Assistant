@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from uuid import UUID
 
 from app.database import get_db
 from app.models.transaction import Transaction
@@ -8,7 +9,7 @@ router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 
 
 @router.get("/{customer_id}")
-def list_transactions(customer_id: str, db: Session = Depends(get_db)) -> dict:
+def list_transactions(customer_id: UUID, db: Session = Depends(get_db)) -> dict:
     transactions = (
         db.query(Transaction)
         .filter(Transaction.customer_id == customer_id)
@@ -17,7 +18,7 @@ def list_transactions(customer_id: str, db: Session = Depends(get_db)) -> dict:
     )
 
     return {
-        "customer_id": customer_id,
+        "customer_id": str(customer_id),
         "count": len(transactions),
         "transactions": [
             {
