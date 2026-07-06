@@ -3,16 +3,16 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
-from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langchain_groq import ChatGroq
 from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.prebuilt import InjectedState, ToolNode, tools_condition
 from sqlalchemy.orm import Session
 from typing_extensions import TypedDict
 
 from app.config import settings
+from app.services.analytics_service import get_shop_analytics
 from app.services.customer_service import (
     add_customer,
     delete_customer,
@@ -20,7 +20,7 @@ from app.services.customer_service import (
     get_self_view_link,
     list_all_customers,
 )
-from app.services.transaction_service import add_credit, record_payment
+from app.services.transaction_service import add_credit, list_due_today, list_overdue, record_payment
 
 
 MODEL_NAME = "llama-3.3-70b-versatile"
@@ -41,6 +41,12 @@ Response style:
 - Use neat list format for multi-customer outputs.
 - Format amounts as PKR X,XXX with commas.
 - Show dates in human-readable form.
+- For list_due_today and list_overdue results, return a readable numbered list with
+    customer name and balance, and include total count.
+- If list_due_today or list_overdue is empty, respond with a natural sentence such as
+    "No payments are due today" instead of showing raw JSON.
+- For get_shop_analytics results, present the six metrics as readable financial prose
+    instead of echoing raw key names.
 
 Today is: {today}
 
@@ -51,20 +57,25 @@ call add_customer first, then add_credit in the same turn.
 
 class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
+    db: Session
 
 
-def _get_db_from_config(config: RunnableConfig | None) -> Session:
-    db = (config or {}).get("configurable", {}).get("db")
+def _get_db_from_state(state: dict[str, Any]) -> Session:
+    db = state.get("db")
     if db is None:
-        raise ValueError("Database session missing from LangGraph config.")
+        raise ValueError("Database session missing from LangGraph state.")
     return db
 
 
 @tool
-def add_customer_tool(name: str, phone: str | None = None, config: RunnableConfig | None = None) -> str:
+def add_customer_tool(
+    name: str,
+    phone: str | None = None,
+    state: Annotated[dict[str, Any], InjectedState] = None,
+) -> str:
     """Adds a new customer to the digital ledger."""
     try:
-        result = add_customer(_get_db_from_config(config), name=name, phone=phone)
+        result = add_customer(_get_db_from_state(state or {}), name=name, phone=phone)
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
@@ -76,12 +87,12 @@ def add_credit_tool(
     amount: float,
     note: str | None = None,
     due_date: str | None = None,
-    config: RunnableConfig | None = None,
+    state: Annotated[dict[str, Any], InjectedState] = None,
 ) -> str:
     """Records credit given (udhaar) to a customer."""
     try:
         result = add_credit(
-            _get_db_from_config(config),
+            _get_db_from_state(state or {}),
             customer_name=customer_name,
             amount=amount,
             note=note,
@@ -97,12 +108,12 @@ def record_payment_tool(
     customer_name: str,
     amount: float,
     note: str | None = None,
-    config: RunnableConfig | None = None,
+    state: Annotated[dict[str, Any], InjectedState] = None,
 ) -> str:
     """Records a payment received from a customer."""
     try:
         result = record_payment(
-            _get_db_from_config(config),
+            _get_db_from_state(state or {}),
             customer_name=customer_name,
             amount=amount,
             note=note,
@@ -113,40 +124,79 @@ def record_payment_tool(
 
 
 @tool
-def get_customer_info_tool(customer_name: str, config: RunnableConfig | None = None) -> str:
+def get_customer_info_tool(
+    customer_name: str,
+    state: Annotated[dict[str, Any], InjectedState] = None,
+) -> str:
     """Gets a customer's balance, trust info, and recent transactions."""
     try:
-        result = get_customer_info(_get_db_from_config(config), customer_name=customer_name)
+        result = get_customer_info(_get_db_from_state(state or {}), customer_name=customer_name)
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
 
 
 @tool
-def list_all_customers_tool(config: RunnableConfig | None = None) -> str:
+def list_all_customers_tool(state: Annotated[dict[str, Any], InjectedState] = None) -> str:
     """Lists all customers with balances and trust scores."""
     try:
-        result = list_all_customers(_get_db_from_config(config))
+        result = list_all_customers(_get_db_from_state(state or {}))
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
 
 
 @tool
-def delete_customer_tool(customer_name: str, config: RunnableConfig | None = None) -> str:
+def delete_customer_tool(
+    customer_name: str,
+    state: Annotated[dict[str, Any], InjectedState] = None,
+) -> str:
     """Deletes a customer when their balance is zero."""
     try:
-        result = delete_customer(_get_db_from_config(config), customer_name=customer_name)
+        result = delete_customer(_get_db_from_state(state or {}), customer_name=customer_name)
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
 
 
 @tool
-def get_customer_self_view_link_tool(customer_name: str, config: RunnableConfig | None = None) -> str:
+def get_customer_self_view_link_tool(
+    customer_name: str,
+    state: Annotated[dict[str, Any], InjectedState] = None,
+) -> str:
     """Gets a shareable read-only self-view link for a customer."""
     try:
-        result = get_self_view_link(_get_db_from_config(config), customer_name=customer_name)
+        result = get_self_view_link(_get_db_from_state(state or {}), customer_name=customer_name)
+        return json.dumps(result)
+    except Exception as exc:  # pragma: no cover
+        return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
+
+
+@tool
+def list_due_today_tool(state: Annotated[dict[str, Any], InjectedState] = None) -> str:
+    """Use when asked who needs to pay today, what is due today, or who has payments due today."""
+    try:
+        result = list_due_today(_get_db_from_state(state or {}))
+        return json.dumps(result)
+    except Exception as exc:  # pragma: no cover
+        return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
+
+
+@tool
+def list_overdue_tool(state: Annotated[dict[str, Any], InjectedState] = None) -> str:
+    """Use when asked who is late, who is overdue, or who has not paid past due obligations."""
+    try:
+        result = list_overdue(_get_db_from_state(state or {}))
+        return json.dumps(result)
+    except Exception as exc:  # pragma: no cover
+        return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
+
+
+@tool
+def get_shop_analytics_tool(state: Annotated[dict[str, Any], InjectedState] = None) -> str:
+    """Use for overall shop summary such as outstanding amount, balances, average debt, and analytics overview."""
+    try:
+        result = get_shop_analytics(_get_db_from_state(state or {}))
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
@@ -160,6 +210,9 @@ TOOLS = [
     list_all_customers_tool,
     delete_customer_tool,
     get_customer_self_view_link_tool,
+    list_due_today_tool,
+    list_overdue_tool,
+    get_shop_analytics_tool,
 ]
 
 _model: Any | None = None
@@ -241,11 +294,11 @@ def _extract_last_assistant(messages: list[AnyMessage]) -> str:
 async def run_khata_chat(message: str, history: list[dict[str, str]], db_session: Session) -> dict[str, Any]:
     inputs = {
         "messages": [*_to_langgraph_history(history), HumanMessage(content=message)],
+        "db": db_session,
     }
-    config: RunnableConfig = {"configurable": {"db": db_session}}
 
     try:
-        final_state = await _graph.ainvoke(inputs, config=config)
+        final_state = await _graph.ainvoke(inputs)
         messages: list[AnyMessage] = final_state["messages"]
     except Exception as exc:
         fallback = f"I could not complete that request right now. {str(exc)}"
@@ -264,11 +317,11 @@ async def run_khata_chat(message: str, history: list[dict[str, str]], db_session
 def chat_with_tools(*, message: str, history: list[dict[str, str]], db: Session) -> tuple[str, list[dict[str, str]]]:
     inputs = {
         "messages": [*_to_langgraph_history(history), HumanMessage(content=message)],
+        "db": db,
     }
-    config: RunnableConfig = {"configurable": {"db": db}}
 
     try:
-        final_state = _graph.invoke(inputs, config=config)
+        final_state = _graph.invoke(inputs)
         messages: list[AnyMessage] = final_state["messages"]
     except Exception as exc:
         fallback = f"I could not complete that request right now. {str(exc)}"
