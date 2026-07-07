@@ -26,18 +26,7 @@ def get_shop_analytics(db: Session) -> dict:
                 customers_with_balance += 1
                 total_outstanding += balance
 
-                has_overdue_credit = (
-                    db.query(Transaction)
-                    .filter(
-                        Transaction.customer_id == customer.id,
-                        Transaction.type == "credit_given",
-                        Transaction.due_date.is_not(None),
-                        Transaction.due_date < today,
-                    )
-                    .first()
-                    is not None
-                )
-                if has_overdue_credit:
+                if stats["overdue_count"] > 0:
                     overdue_customer_count += 1
 
         overdue_credit_rows = (
