@@ -53,6 +53,12 @@ Today is: {today}
 Important multi-step rule:
 If a message implies both creating a new customer and adding credit in one request,
 call add_customer first, then add_credit in the same turn.
+
+When presenting trust scores to the owner, explain briefly what they mean. 80 and above
+means excellent, 60 to 79 is good, 40 to 59 is fair, 20 to 39 is poor, and below 20
+is high risk. If the owner asks about a customer's trust score or whether to extend
+credit, always call get_customer_info_tool first and use the returned trust_score and
+trust_label. Never invent a score.
 """.strip()
 
 class AgentState(TypedDict):
