@@ -4,31 +4,134 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Digital Khata Assistant</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #f4f6f8;
-      color: #1a1a1a;
-      display: grid;
-      place-items: center;
-      min-height: 100vh;
-    }
-    .card {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 24px;
-      max-width: 640px;
-      text-align: center;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-    }
-  </style>
+  <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <main class="card">
-    <h1>Digital Khata Assistant</h1>
-    <p>Week 1 placeholder frontend. API is available at <code>/docs</code>.</p>
-  </main>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <div class="brand-mark">Digital Khata</div>
+        <h1>Shop finance, chat, and trust at a glance.</h1>
+        <p class="tagline">A live assistant dashboard for credit, repayments, overdue follow-ups, and customer trust scores.</p>
+      </div>
+      <div class="topbar-meta">
+        <span class="date-pill" id="todayDate">Today</span>
+        <span class="status-pill">Live PostgreSQL data</span>
+      </div>
+    </header>
+
+    <section class="summary-grid" aria-label="Financial summary">
+      <article class="summary-card summary-card--alert">
+        <span class="summary-label">Total outstanding</span>
+        <strong class="summary-value" id="totalOutstanding">PKR 0.00</strong>
+      </article>
+      <article class="summary-card">
+        <span class="summary-label">Customers with balance</span>
+        <strong class="summary-value" id="customersWithBalance">0</strong>
+      </article>
+      <article class="summary-card">
+        <span class="summary-label">Average debt</span>
+        <strong class="summary-value" id="averageDebt">PKR 0.00</strong>
+      </article>
+      <article class="summary-card summary-card--warn">
+        <span class="summary-label">Overdue customers</span>
+        <strong class="summary-value" id="overdueCount">0</strong>
+      </article>
+    </section>
+
+    <section class="chart-strip">
+      <article class="panel panel--chart">
+        <div class="panel-heading">
+          <div>
+            <h2>Trust distribution</h2>
+            <p>How your customers are rated right now.</p>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="trustChart" aria-label="Trust score distribution chart" role="img"></canvas>
+        </div>
+      </article>
+    </section>
+
+    <section class="workspace">
+      <aside class="sidebar">
+        <article class="panel panel--searchable">
+          <div class="panel-heading">
+            <div>
+              <h2>Customers</h2>
+              <p id="customerCountLabel">All customers</p>
+            </div>
+          </div>
+          <label class="search-box" for="customerSearch">
+            <span>Search</span>
+            <input id="customerSearch" type="search" placeholder="Filter by name" autocomplete="off" />
+          </label>
+          <div class="customer-list" id="customerList" aria-live="polite"></div>
+        </article>
+
+        <article class="panel compact-panel" id="dueTodayPanel">
+          <div class="panel-heading panel-heading--compact">
+            <h2>Due today</h2>
+            <span class="count-pill" id="dueTodayCount">0</span>
+          </div>
+          <div class="compact-list" id="dueTodayList"></div>
+        </article>
+
+        <article class="panel compact-panel" id="overduePanel">
+          <div class="panel-heading panel-heading--compact">
+            <h2>Overdue</h2>
+            <span class="count-pill count-pill--alert" id="overduePanelCount">0</span>
+          </div>
+          <div class="compact-list" id="overdueList"></div>
+        </article>
+      </aside>
+
+      <main class="main-column">
+        <article class="panel chat-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Chat with Digital Khata</h2>
+              <p>Ask about customers, credit, due dates, repayments, or analytics.</p>
+            </div>
+          </div>
+
+          <div class="suggestion-chips" id="suggestionChips">
+            <button type="button" class="chip">Show all customers</button>
+            <button type="button" class="chip">Who is overdue?</button>
+            <button type="button" class="chip">What's due today?</button>
+            <button type="button" class="chip">Give me a summary</button>
+          </div>
+
+          <div class="chat-history" id="chatHistory" aria-live="polite"></div>
+
+          <form class="chat-input-bar" id="chatForm">
+            <label class="sr-only" for="chatInput">Type a message</label>
+            <textarea id="chatInput" rows="2" placeholder="Ask Digital Khata anything..." autocomplete="off"></textarea>
+            <div class="chat-actions">
+              <button type="button" class="secondary-button" id="clearChatButton">Clear</button>
+              <button type="submit" class="primary-button" id="sendChatButton">Send</button>
+            </div>
+          </form>
+        </article>
+      </main>
+    </section>
+  </div>
+
+  <div class="drawer-overlay" id="drawerOverlay" hidden></div>
+  <aside class="drawer" id="customerDrawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div>
+        <span class="drawer-kicker">Customer detail</span>
+        <h2 id="drawerName">Customer</h2>
+      </div>
+      <button type="button" class="icon-button" id="closeDrawerButton" aria-label="Close customer detail">×</button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </aside>
+
+  <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="/app.js"></script>
 </body>
 </html>
