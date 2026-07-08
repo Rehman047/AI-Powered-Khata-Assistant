@@ -10,4 +10,4 @@ def generate_self_view_token(length: int = 32) -> str:
 
 def make_self_view_url(token: str) -> str:
     base = settings.APP_HOST.rstrip("/")
-    return f"{base}/api/self-view/{token}"
+    return f"{base}/view/{token}"
