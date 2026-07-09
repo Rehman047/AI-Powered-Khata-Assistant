@@ -3,44 +3,51 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Digital Khata Assistant</title>
+  <title>Digital Credit Assistant</title>
   <link rel="stylesheet" href="/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="app-shell">
+
     <header class="topbar">
-      <div>
-        <div class="brand-mark">Digital Khata</div>
-        <h1>Shop finance, chat, and trust at a glance.</h1>
-        <p class="tagline">A live assistant dashboard for credit, repayments, overdue follow-ups, and customer trust scores.</p>
-      </div>
-      <div class="topbar-meta">
-        <span class="date-pill" id="todayDate">Today</span>
-        <span class="status-pill">Live PostgreSQL data</span>
+      <div class="topbar-ledger-edge" aria-hidden="true"></div>
+      <div class="topbar-main">
+        <div class="topbar-identity">
+          <span class="brand-mark">
+            <span class="brand-mark__icon" aria-hidden="true">▤</span>
+            Digital Credit
+          </span>
+          <h1>Smart ledgers. Smarter business.</h1>
+<p class="tagline">Automate your credit tracking, manage repayments, and score customer reliability instantly.</p>
+        </div>
+        <div class="topbar-meta">
+          <span class="date-pill" id="todayDate">Today</span>
+          <span class="status-pill"><span class="status-dot" aria-hidden="true"></span>Live PostgreSQL data</span>
+        </div>
       </div>
     </header>
 
-    <section class="summary-grid" aria-label="Financial summary">
-      <article class="summary-card summary-card--alert">
-        <span class="summary-label">Total outstanding</span>
-        <strong class="summary-value" id="totalOutstanding">PKR 0.00</strong>
-      </article>
-      <article class="summary-card">
-        <span class="summary-label">Customers with balance</span>
-        <strong class="summary-value" id="customersWithBalance">0</strong>
-      </article>
-      <article class="summary-card">
-        <span class="summary-label">Average debt</span>
-        <strong class="summary-value" id="averageDebt">PKR 0.00</strong>
-      </article>
-      <article class="summary-card summary-card--warn">
-        <span class="summary-label">Overdue customers</span>
-        <strong class="summary-value" id="overdueCount">0</strong>
-      </article>
-    </section>
+    <section class="overview" aria-label="Financial overview">
+      <div class="summary-grid">
+        <article class="summary-card summary-card--alert">
+          <span class="summary-label">Total outstanding</span>
+          <strong class="summary-value" id="totalOutstanding">PKR 0.00</strong>
+        </article>
+        <article class="summary-card summary-card--teal">
+          <span class="summary-label">Customers with balance</span>
+          <strong class="summary-value" id="customersWithBalance">0</strong>
+        </article>
+        <article class="summary-card summary-card--gold">
+          <span class="summary-label">Average debt</span>
+          <strong class="summary-value" id="averageDebt">PKR 0.00</strong>
+        </article>
+        <article class="summary-card summary-card--warn">
+          <span class="summary-label">Overdue customers</span>
+          <strong class="summary-value" id="overdueCount">0</strong>
+        </article>
+      </div>
 
-    <section class="chart-strip">
       <article class="panel panel--chart">
         <div class="panel-heading">
           <div>
@@ -64,13 +71,14 @@
             </div>
           </div>
           <label class="search-box" for="customerSearch">
-            <span>Search</span>
+            <span class="search-box__icon" aria-hidden="true">⌕</span>
+            <span class="sr-only">Search customers</span>
             <input id="customerSearch" type="search" placeholder="Filter by name" autocomplete="off" />
           </label>
           <div class="customer-list" id="customerList" aria-live="polite"></div>
         </article>
 
-        <article class="panel compact-panel" id="dueTodayPanel">
+        <article class="panel compact-panel compact-panel--due" id="dueTodayPanel">
           <div class="panel-heading panel-heading--compact">
             <h2>Due today</h2>
             <span class="count-pill" id="dueTodayCount">0</span>
@@ -78,7 +86,7 @@
           <div class="compact-list" id="dueTodayList"></div>
         </article>
 
-        <article class="panel compact-panel" id="overduePanel">
+        <article class="panel compact-panel compact-panel--overdue" id="overduePanel">
           <div class="panel-heading panel-heading--compact">
             <h2>Overdue</h2>
             <span class="count-pill count-pill--alert" id="overduePanelCount">0</span>
@@ -91,7 +99,7 @@
         <article class="panel chat-panel">
           <div class="panel-heading">
             <div>
-              <h2>Chat with Digital Khata</h2>
+              <h2>Chat with Digital Credit</h2>
               <p>Ask about customers, credit, due dates, repayments, or analytics.</p>
             </div>
           </div>
@@ -107,7 +115,7 @@
 
           <form class="chat-input-bar" id="chatForm">
             <label class="sr-only" for="chatInput">Type a message</label>
-            <textarea id="chatInput" rows="2" placeholder="Ask Digital Khata anything..." autocomplete="off"></textarea>
+            <textarea id="chatInput" rows="2" placeholder="Ask Digital Credit anything..." autocomplete="off"></textarea>
             <div class="chat-actions">
               <button type="button" class="secondary-button" id="clearChatButton">Clear</button>
               <button type="submit" class="primary-button" id="sendChatButton">Send</button>
@@ -116,8 +124,9 @@
         </article>
       </main>
     </section>
+
     <footer class="page-footer">
-      <span>Digital Khata Assistant</span>
+      <span>Digital Credit Assistant</span>
       <span>Live data from PostgreSQL · Trust scores and analytics refresh after every action</span>
     </footer>
   </div>
