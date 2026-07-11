@@ -554,6 +554,7 @@ async function submitAuth(mode) {
 function logout() {
   clearAuthToken();
   setSignedOutState();
+  renderChatHistory();
   renderSessionPill();
   setAppVisibility(false);
   setAuthMode("login");
@@ -627,6 +628,7 @@ function cacheElements() {
   elements.registerShopName = document.getElementById("registerShopName");
   elements.registerEmail = document.getElementById("registerEmail");
   elements.registerPassword = document.getElementById("registerPassword");
+  elements.registerButton = document.getElementById("registerButton");
   elements.todayDate = document.getElementById("todayDate");
   elements.totalOutstanding = document.getElementById("totalOutstanding");
   elements.customersWithBalance = document.getElementById("customersWithBalance");
