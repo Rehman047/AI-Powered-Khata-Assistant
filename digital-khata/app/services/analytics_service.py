@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from uuid import UUID as UUIDType
 
 from sqlalchemy.orm import Session
 
@@ -8,10 +9,10 @@ from app.models.transaction import Transaction
 from app.services.customer_service import _compute_customer_stats
 
 
-def get_shop_analytics(db: Session) -> dict:
+def get_shop_analytics(db: Session, *, owner_id: UUIDType) -> dict:
     today = date.today()
     try:
-        customers = db.query(Customer).all()
+        customers = db.query(Customer).filter(Customer.owner_id == owner_id).all()
 
         total_customers = len(customers)
         customers_with_balance = 0
@@ -31,7 +32,9 @@ def get_shop_analytics(db: Session) -> dict:
 
         overdue_credit_rows = (
             db.query(Transaction)
+            .join(Customer)
             .filter(
+                Customer.owner_id == owner_id,
                 Transaction.type == "credit_given",
                 Transaction.due_date.is_not(None),
                 Transaction.due_date < today,
@@ -67,6 +70,6 @@ def get_shop_analytics(db: Session) -> dict:
         }
 
 
-def get_dashboard_metrics(db: Session) -> dict:
+def get_dashboard_metrics(db: Session, *, owner_id: UUIDType) -> dict:
     # Backward-compatible alias.
-    return get_shop_analytics(db)
+    return get_shop_analytics(db, owner_id=owner_id)

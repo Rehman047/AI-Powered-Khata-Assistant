@@ -126,6 +126,158 @@ img, canvas {
 }
 
 /* ============================================================
+   Auth gate
+   ============================================================ */
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-6);
+  background:
+    radial-gradient(circle at top left, rgba(168, 85, 247, 0.28), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(59, 7, 100, 0.35), transparent 34%),
+    linear-gradient(180deg, #0b0614 0%, #07030e 100%);
+}
+
+.auth-card {
+  width: min(1100px, 100%);
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: var(--sp-6);
+  padding: var(--sp-6);
+  border: 1px solid rgba(196, 181, 253, 0.16);
+  border-radius: calc(var(--radius-xl) * 1.4);
+  background: rgba(16, 6, 31, 0.86);
+  box-shadow: var(--shadow-strong);
+  backdrop-filter: blur(18px);
+}
+
+.auth-hero,
+.auth-panel {
+  border-radius: calc(var(--radius-xl) * 1.1);
+  padding: var(--sp-6);
+}
+
+.auth-hero {
+  background: linear-gradient(160deg, rgba(59, 7, 100, 0.88), rgba(88, 28, 135, 0.6));
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--sp-6);
+}
+
+.auth-hero h1 {
+  margin: 0;
+  font-size: clamp(2.1rem, 4vw, 3.4rem);
+  line-height: 1.02;
+}
+
+.auth-hero p {
+  margin: 0;
+  color: rgba(248, 245, 255, 0.86);
+  max-width: 42ch;
+}
+
+.auth-points {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.auth-point {
+  display: grid;
+  gap: 4px;
+  padding: var(--sp-4);
+  border-radius: var(--radius-lg);
+  background: rgba(7, 3, 14, 0.24);
+  border: 1px solid rgba(243, 232, 255, 0.1);
+}
+
+.auth-point strong {
+  font-size: 1rem;
+}
+
+.auth-point span {
+  color: rgba(243, 232, 255, 0.78);
+  font-size: 0.95rem;
+}
+
+.auth-panel {
+  background: rgba(7, 3, 14, 0.72);
+  border: 1px solid rgba(196, 181, 253, 0.12);
+}
+
+.auth-tabs {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(196, 181, 253, 0.08);
+  border: 1px solid rgba(196, 181, 253, 0.14);
+}
+
+.auth-tab {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.auth-tab.is-active {
+  background: linear-gradient(135deg, var(--purple-700), var(--purple-600));
+  color: var(--text-on-brand);
+  box-shadow: var(--shadow-light);
+}
+
+.auth-status {
+  margin: var(--sp-5) 0 var(--sp-4);
+  color: var(--text-secondary);
+}
+
+.auth-form {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.auth-form label {
+  display: grid;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.auth-form input {
+  width: 100%;
+  border: 1px solid rgba(196, 181, 253, 0.18);
+  background: rgba(16, 6, 31, 0.96);
+  color: var(--text-primary);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+}
+
+.auth-form input::placeholder {
+  color: rgba(196, 181, 253, 0.54);
+}
+
+.auth-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.session-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(196, 181, 253, 0.08);
+  border: 1px solid rgba(196, 181, 253, 0.16);
+  color: var(--text-secondary);
+}
+
+/* ============================================================
    Header
    ============================================================ */
 

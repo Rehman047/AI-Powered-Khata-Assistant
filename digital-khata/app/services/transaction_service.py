@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from uuid import UUID as UUIDType
 
 from sqlalchemy.orm import Session
 
@@ -11,12 +12,13 @@ from app.services.customer_service import _compute_customer_stats, _find_custome
 def add_credit(
     db: Session,
     *,
+    owner_id: UUIDType,
     customer_name: str,
     amount: float,
     note: str | None = None,
     due_date: str | None = None,
 ) -> dict:
-    customer = _find_customer_by_name(db, customer_name)
+    customer = _find_customer_by_name(db, owner_id, customer_name)
     if customer is None:
         return {"error": f"Customer '{customer_name}' not found. Add the customer first."}
 
@@ -54,11 +56,12 @@ def add_credit(
 def record_payment(
     db: Session,
     *,
+    owner_id: UUIDType,
     customer_name: str,
     amount: float,
     note: str | None = None,
 ) -> dict:
-    customer = _find_customer_by_name(db, customer_name)
+    customer = _find_customer_by_name(db, owner_id, customer_name)
     if customer is None:
         return {"error": f"Customer '{customer_name}' not found."}
 
@@ -95,12 +98,14 @@ def record_payment(
     }
 
 
-def list_due_today(db: Session) -> dict:
+def list_due_today(db: Session, *, owner_id: UUIDType) -> dict:
     today = date.today()
     try:
         due_credit_rows = (
             db.query(Transaction)
+            .join(Customer)
             .filter(
+                Customer.owner_id == owner_id,
                 Transaction.type == "credit_given",
                 Transaction.due_date == today,
             )
@@ -111,7 +116,7 @@ def list_due_today(db: Session) -> dict:
         due_today: list[dict] = []
 
         for customer_id in customer_ids:
-            customer = db.query(Customer).filter(Customer.id == customer_id).first()
+            customer = db.query(Customer).filter(Customer.id == customer_id, Customer.owner_id == owner_id).first()
             if customer is None:
                 continue
 
@@ -142,12 +147,14 @@ def list_due_today(db: Session) -> dict:
         }
 
 
-def list_overdue(db: Session) -> dict:
+def list_overdue(db: Session, *, owner_id: UUIDType) -> dict:
     today = date.today()
     try:
         overdue_credit_rows = (
             db.query(Transaction)
+            .join(Customer)
             .filter(
+                Customer.owner_id == owner_id,
                 Transaction.type == "credit_given",
                 Transaction.due_date.is_not(None),
                 Transaction.due_date < today,
@@ -159,7 +166,7 @@ def list_overdue(db: Session) -> dict:
         overdue: list[dict] = []
 
         for customer_id in customer_ids:
-            customer = db.query(Customer).filter(Customer.id == customer_id).first()
+            customer = db.query(Customer).filter(Customer.id == customer_id, Customer.owner_id == owner_id).first()
             if customer is None:
                 continue
 

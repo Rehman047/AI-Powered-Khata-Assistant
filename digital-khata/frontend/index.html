@@ -8,7 +8,62 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <div class="app-shell">
+  <section class="auth-shell" id="authShell">
+    <div class="auth-card">
+      <div class="auth-hero">
+        <span class="brand-mark">
+          <span class="brand-mark__icon" aria-hidden="true">▤</span>
+          Digital Credit
+        </span>
+        <h1>One login per shop.</h1>
+        <p>Register a shop owner account to keep every customer, transaction, and insight isolated to your ledger.</p>
+        <div class="auth-points">
+          <div class="auth-point"><strong>JWT access</strong><span>Bearer tokens secure every API call.</span></div>
+          <div class="auth-point"><strong>Tenant scoped</strong><span>Each account sees only its own customers.</span></div>
+          <div class="auth-point"><strong>Private dashboard</strong><span>Chat, analytics, and balances stay in one shop boundary.</span></div>
+        </div>
+      </div>
+
+      <div class="auth-panel">
+        <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
+          <button type="button" class="auth-tab is-active" id="loginTab" aria-selected="true">Log in</button>
+          <button type="button" class="auth-tab" id="registerTab" aria-selected="false">Register</button>
+        </div>
+
+        <p class="auth-status" id="authStatus">Sign in to open your dashboard.</p>
+
+        <form class="auth-form" id="loginForm">
+          <label>
+            <span>Email</span>
+            <input type="email" id="loginEmail" autocomplete="email" required />
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" id="loginPassword" autocomplete="current-password" required />
+          </label>
+          <button type="submit" class="primary-button auth-submit" id="loginButton">Log in</button>
+        </form>
+
+        <form class="auth-form" id="registerForm" hidden>
+          <label>
+            <span>Shop name</span>
+            <input type="text" id="registerShopName" autocomplete="organization" required />
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" id="registerEmail" autocomplete="email" required />
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" id="registerPassword" autocomplete="new-password" minlength="8" required />
+          </label>
+          <button type="submit" class="primary-button auth-submit" id="registerButton">Create account</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <div class="app-shell" hidden>
 
     <header class="topbar">
       <div class="topbar-ledger-edge" aria-hidden="true"></div>
@@ -24,6 +79,8 @@
         <div class="topbar-meta">
           <span class="date-pill" id="todayDate">Today</span>
           <span class="status-pill"><span class="status-dot" aria-hidden="true"></span>Live PostgreSQL data</span>
+          <span class="status-pill" id="ownerSessionPill">Signed out</span>
+          <button type="button" class="secondary-button" id="logoutButton">Log out</button>
         </div>
       </div>
     </header>

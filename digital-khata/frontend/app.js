@@ -1,4 +1,6 @@
 const state = {
+  authMode: "login",
+  owner: null,
   analytics: null,
   customers: [],
   dueToday: [],
@@ -10,6 +12,8 @@ const state = {
   chatBusy: false,
   refreshInProgress: false,
 };
+
+const AUTH_TOKEN_KEY = "digital-khata-token";
 
 const elements = {};
 
@@ -67,8 +71,76 @@ function showToast(message, type = "error") {
   }, 3200);
 }
 
+function getAuthToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY) || "";
+}
+
+function setAuthToken(token) {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+function clearAuthToken() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+function setSignedOutState() {
+  state.owner = null;
+  state.analytics = null;
+  state.customers = [];
+  state.dueToday = [];
+  state.overdue = [];
+  state.filteredCustomers = [];
+  state.history = [];
+  state.selectedCustomer = null;
+}
+
+function setAppVisibility(isAuthed) {
+  elements.authShell.hidden = isAuthed;
+  elements.appShell.hidden = !isAuthed;
+}
+
+function renderSessionPill() {
+  if (state.owner) {
+    elements.ownerSessionPill.textContent = `${state.owner.shop_name} · ${state.owner.email}`;
+    elements.logoutButton.hidden = false;
+  } else {
+    elements.ownerSessionPill.textContent = "Signed out";
+    elements.logoutButton.hidden = true;
+  }
+}
+
+function setAuthMode(mode) {
+  state.authMode = mode;
+  const isLogin = mode === "login";
+  elements.loginTab.classList.toggle("is-active", isLogin);
+  elements.registerTab.classList.toggle("is-active", !isLogin);
+  elements.loginTab.setAttribute("aria-selected", String(isLogin));
+  elements.registerTab.setAttribute("aria-selected", String(!isLogin));
+  elements.loginForm.hidden = !isLogin;
+  elements.registerForm.hidden = isLogin;
+  elements.authStatus.textContent = isLogin
+    ? "Sign in to open your dashboard."
+    : "Create a new shop owner account to get started.";
+}
+
+function handleUnauthorized() {
+  clearAuthToken();
+  setSignedOutState();
+  renderSessionPill();
+  setAppVisibility(false);
+  setAuthMode(state.authMode || "login");
+}
+
 async function fetchJSON(url, options = {}) {
-  const response = await fetch(url, options);
+  const requestOptions = { ...options };
+  const headers = new Headers(requestOptions.headers || {});
+  const token = getAuthToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  requestOptions.headers = headers;
+
+  const response = await fetch(url, requestOptions);
   const text = await response.text();
   let data = null;
   if (text) {
@@ -80,7 +152,12 @@ async function fetchJSON(url, options = {}) {
   }
   if (!response.ok) {
     const message = data && typeof data === "object" && data.error ? data.error : `Request failed: ${response.status}`;
-    throw new Error(message);
+    if (response.status === 401) {
+      handleUnauthorized();
+    }
+    const error = new Error(message);
+    error.authRequired = response.status === 401;
+    throw error;
   }
   return data;
 }
@@ -383,6 +460,9 @@ async function refreshDashboard({ silent = false } = {}) {
       showToast("Dashboard refreshed.", "success");
     }
   } catch (error) {
+    if (error.authRequired) {
+      return;
+    }
     showToast(error.message || "Could not refresh dashboard.", "error");
   } finally {
     state.refreshInProgress = false;
@@ -420,6 +500,9 @@ async function sendChat(message) {
     renderChatHistory();
     await refreshDashboard({ silent: true });
   } catch (error) {
+    if (error.authRequired) {
+      return;
+    }
     state.history.push({ role: "assistant", content: error.message || "Something went wrong." });
     renderChatHistory();
     showToast(error.message || "Something went wrong.", "error");
@@ -428,7 +511,67 @@ async function sendChat(message) {
   }
 }
 
+async function submitAuth(mode) {
+  const isLogin = mode === "login";
+  const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
+  const payload = isLogin
+    ? {
+        email: elements.loginEmail.value.trim(),
+        password: elements.loginPassword.value,
+      }
+    : {
+        shop_name: elements.registerShopName.value.trim(),
+        email: elements.registerEmail.value.trim(),
+        password: elements.registerPassword.value,
+      };
+
+  const button = isLogin ? elements.loginButton : elements.registerButton;
+  button.disabled = true;
+  try {
+    const response = await fetchJSON(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    setAuthToken(response.access_token);
+    state.owner = {
+      shop_name: response.shop_name,
+      email: response.email,
+    };
+    renderSessionPill();
+    setAppVisibility(true);
+    await refreshDashboard({ silent: true });
+    showToast(isLogin ? "Welcome back." : "Account created.", "success");
+  } catch (error) {
+    elements.authStatus.textContent = error.message || "Authentication failed.";
+    showToast(error.message || "Authentication failed.", "error");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function logout() {
+  clearAuthToken();
+  setSignedOutState();
+  renderSessionPill();
+  setAppVisibility(false);
+  setAuthMode("login");
+}
+
 function wireEvents() {
+  elements.loginTab.addEventListener("click", () => setAuthMode("login"));
+  elements.registerTab.addEventListener("click", () => setAuthMode("register"));
+  elements.loginForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitAuth("login");
+  });
+  elements.registerForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitAuth("register");
+  });
+  elements.logoutButton.addEventListener("click", logout);
+
   elements.customerSearch.addEventListener("input", () => {
     const query = elements.customerSearch.value.trim().toLowerCase();
     state.filteredCustomers = query
@@ -471,6 +614,19 @@ function wireEvents() {
 }
 
 function cacheElements() {
+  elements.authShell = document.getElementById("authShell");
+  elements.appShell = document.querySelector(".app-shell");
+  elements.loginTab = document.getElementById("loginTab");
+  elements.registerTab = document.getElementById("registerTab");
+  elements.authStatus = document.getElementById("authStatus");
+  elements.loginForm = document.getElementById("loginForm");
+  elements.registerForm = document.getElementById("registerForm");
+  elements.loginEmail = document.getElementById("loginEmail");
+  elements.loginPassword = document.getElementById("loginPassword");
+  elements.loginButton = document.getElementById("loginButton");
+  elements.registerShopName = document.getElementById("registerShopName");
+  elements.registerEmail = document.getElementById("registerEmail");
+  elements.registerPassword = document.getElementById("registerPassword");
   elements.todayDate = document.getElementById("todayDate");
   elements.totalOutstanding = document.getElementById("totalOutstanding");
   elements.customersWithBalance = document.getElementById("customersWithBalance");
@@ -490,6 +646,8 @@ function cacheElements() {
   elements.sendChatButton = document.getElementById("sendChatButton");
   elements.clearChatButton = document.getElementById("clearChatButton");
   elements.suggestionChips = document.getElementById("suggestionChips");
+  elements.ownerSessionPill = document.getElementById("ownerSessionPill");
+  elements.logoutButton = document.getElementById("logoutButton");
   elements.drawer = document.getElementById("customerDrawer");
   elements.drawerOverlay = document.getElementById("drawerOverlay");
   elements.drawerBody = document.getElementById("drawerBody");
@@ -504,7 +662,25 @@ async function init() {
   renderChatHistory();
   renderSummaryCards();
   wireEvents();
-  await refreshDashboard({ silent: true });
+
+  const token = getAuthToken();
+  if (!token) {
+    setSignedOutState();
+    renderSessionPill();
+    setAppVisibility(false);
+    setAuthMode("login");
+    return;
+  }
+
+  try {
+    const me = await fetchJSON("/api/auth/me");
+    state.owner = me;
+    renderSessionPill();
+    setAppVisibility(true);
+    await refreshDashboard({ silent: true });
+  } catch {
+    logout();
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID as UUIDType
 
-from sqlalchemy import DateTime, Index, String, func, text
+from sqlalchemy import DateTime, ForeignKey, Index, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +15,12 @@ class Customer(Base):
         UUID(as_uuid=True),
         primary_key=True,
         server_default=text("gen_random_uuid()"),
+    )
+    owner_id: Mapped[UUIDType] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("shop_owners.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -36,6 +42,7 @@ class Customer(Base):
         back_populates="customer",
         cascade="all, delete-orphan",
     )
+    owner = relationship("ShopOwner", back_populates="customers")
 
 
-Index("ix_customers_name_lower", func.lower(Customer.name))
+Index("ix_customers_owner_name_lower", Customer.owner_id, func.lower(Customer.name))

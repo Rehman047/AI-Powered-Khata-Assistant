@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from uuid import UUID as UUIDType
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -10,10 +11,11 @@ from app.services.trust_score import calculate_trust_score
 from app.utils.token import generate_self_view_token, make_self_view_url
 
 
-def _find_customer_by_name(db: Session, name: str) -> Customer | None:
+def _find_customer_by_name(db: Session, owner_id: UUIDType, name: str) -> Customer | None:
     normalized_name = name.strip().lower()
     return (
         db.query(Customer)
+        .filter(Customer.owner_id == owner_id)
         .filter(func.lower(Customer.name) == normalized_name)
         .first()
     )
@@ -67,8 +69,8 @@ def _compute_customer_stats(db: Session, customer: Customer) -> dict:
     }
 
 
-def add_customer(db: Session, *, name: str, phone: str | None = None) -> dict:
-    existing_customer = _find_customer_by_name(db, name)
+def add_customer(db: Session, *, owner_id: UUIDType, name: str, phone: str | None = None) -> dict:
+    existing_customer = _find_customer_by_name(db, owner_id, name)
     if existing_customer is not None:
         stats = _compute_customer_stats(db, existing_customer)
         return {
@@ -82,6 +84,7 @@ def add_customer(db: Session, *, name: str, phone: str | None = None) -> dict:
         }
 
     customer = Customer(
+        owner_id=owner_id,
         name=name.strip(),
         phone=phone,
         self_view_token=generate_self_view_token(),
@@ -97,8 +100,8 @@ def add_customer(db: Session, *, name: str, phone: str | None = None) -> dict:
     }
 
 
-def get_customer_info(db: Session, *, customer_name: str) -> dict:
-    customer = _find_customer_by_name(db, customer_name)
+def get_customer_info(db: Session, *, owner_id: UUIDType, customer_name: str) -> dict:
+    customer = _find_customer_by_name(db, owner_id, customer_name)
     if customer is None:
         return {"error": f"Customer '{customer_name}' not found."}
 
@@ -133,8 +136,8 @@ def get_customer_info(db: Session, *, customer_name: str) -> dict:
     }
 
 
-def get_customer_history(db: Session, *, customer_name: str) -> dict:
-    customer = _find_customer_by_name(db, customer_name)
+def get_customer_history(db: Session, *, owner_id: UUIDType, customer_name: str) -> dict:
+    customer = _find_customer_by_name(db, owner_id, customer_name)
     if customer is None:
         return {"error": f"Customer '{customer_name}' not found."}
 
@@ -172,8 +175,8 @@ def get_customer_history(db: Session, *, customer_name: str) -> dict:
     }
 
 
-def list_all_customers(db: Session) -> dict:
-    customers = db.query(Customer).order_by(Customer.name.asc()).all()
+def list_all_customers(db: Session, *, owner_id: UUIDType) -> dict:
+    customers = db.query(Customer).filter(Customer.owner_id == owner_id).order_by(Customer.name.asc()).all()
 
     summaries = []
     for customer in customers:
@@ -194,8 +197,8 @@ def list_all_customers(db: Session) -> dict:
     }
 
 
-def delete_customer(db: Session, *, customer_name: str) -> dict:
-    customer = _find_customer_by_name(db, customer_name)
+def delete_customer(db: Session, *, owner_id: UUIDType, customer_name: str) -> dict:
+    customer = _find_customer_by_name(db, owner_id, customer_name)
     if customer is None:
         return {"error": f"Customer '{customer_name}' not found."}
 
@@ -217,8 +220,8 @@ def delete_customer(db: Session, *, customer_name: str) -> dict:
     }
 
 
-def get_self_view_link(db: Session, *, customer_name: str) -> dict:
-    customer = _find_customer_by_name(db, customer_name)
+def get_self_view_link(db: Session, *, owner_id: UUIDType, customer_name: str) -> dict:
+    customer = _find_customer_by_name(db, owner_id, customer_name)
     if customer is None:
         return {"error": f"Customer '{customer_name}' not found."}
 

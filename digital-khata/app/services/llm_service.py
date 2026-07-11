@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from typing import Annotated, Any
+from uuid import UUID as UUIDType
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
 from langchain_core.tools import tool
@@ -64,6 +65,7 @@ trust_label. Never invent a score.
 class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
     db: Session
+    owner_id: UUIDType
 
 
 def _get_db_from_state(state: dict[str, Any]) -> Session:
@@ -71,6 +73,13 @@ def _get_db_from_state(state: dict[str, Any]) -> Session:
     if db is None:
         raise ValueError("Database session missing from LangGraph state.")
     return db
+
+
+def _get_owner_id_from_state(state: dict[str, Any]) -> UUIDType:
+    owner_id = state.get("owner_id")
+    if owner_id is None:
+        raise ValueError("Owner context missing from LangGraph state.")
+    return owner_id
 
 
 @tool
@@ -81,7 +90,12 @@ def add_customer_tool(
 ) -> str:
     """Adds a new customer to the digital ledger."""
     try:
-        result = add_customer(_get_db_from_state(state or {}), name=name, phone=phone)
+        result = add_customer(
+            _get_db_from_state(state or {}),
+            owner_id=_get_owner_id_from_state(state or {}),
+            name=name,
+            phone=phone,
+        )
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
@@ -99,6 +113,7 @@ def add_credit_tool(
     try:
         result = add_credit(
             _get_db_from_state(state or {}),
+            owner_id=_get_owner_id_from_state(state or {}),
             customer_name=customer_name,
             amount=amount,
             note=note,
@@ -120,6 +135,7 @@ def record_payment_tool(
     try:
         result = record_payment(
             _get_db_from_state(state or {}),
+            owner_id=_get_owner_id_from_state(state or {}),
             customer_name=customer_name,
             amount=amount,
             note=note,
@@ -136,7 +152,11 @@ def get_customer_info_tool(
 ) -> str:
     """Gets a customer's balance, trust info, and recent transactions."""
     try:
-        result = get_customer_info(_get_db_from_state(state or {}), customer_name=customer_name)
+        result = get_customer_info(
+            _get_db_from_state(state or {}),
+            owner_id=_get_owner_id_from_state(state or {}),
+            customer_name=customer_name,
+        )
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
@@ -146,7 +166,7 @@ def get_customer_info_tool(
 def list_all_customers_tool(state: Annotated[dict[str, Any], InjectedState] = None) -> str:
     """Lists all customers with balances and trust scores."""
     try:
-        result = list_all_customers(_get_db_from_state(state or {}))
+        result = list_all_customers(_get_db_from_state(state or {}), owner_id=_get_owner_id_from_state(state or {}))
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
@@ -159,7 +179,11 @@ def delete_customer_tool(
 ) -> str:
     """Deletes a customer when their balance is zero."""
     try:
-        result = delete_customer(_get_db_from_state(state or {}), customer_name=customer_name)
+        result = delete_customer(
+            _get_db_from_state(state or {}),
+            owner_id=_get_owner_id_from_state(state or {}),
+            customer_name=customer_name,
+        )
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
@@ -172,7 +196,11 @@ def get_customer_self_view_link_tool(
 ) -> str:
     """Gets a shareable read-only self-view link for a customer."""
     try:
-        result = get_self_view_link(_get_db_from_state(state or {}), customer_name=customer_name)
+        result = get_self_view_link(
+            _get_db_from_state(state or {}),
+            owner_id=_get_owner_id_from_state(state or {}),
+            customer_name=customer_name,
+        )
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
@@ -182,7 +210,10 @@ def get_customer_self_view_link_tool(
 def list_due_today_tool(state: Annotated[dict[str, Any], InjectedState] = None) -> str:
     """Use when asked who needs to pay today, what is due today, or who has payments due today."""
     try:
-        result = list_due_today(_get_db_from_state(state or {}))
+        result = list_due_today(
+            _get_db_from_state(state or {}),
+            owner_id=_get_owner_id_from_state(state or {}),
+        )
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
@@ -192,7 +223,10 @@ def list_due_today_tool(state: Annotated[dict[str, Any], InjectedState] = None) 
 def list_overdue_tool(state: Annotated[dict[str, Any], InjectedState] = None) -> str:
     """Use when asked who is late, who is overdue, or who has not paid past due obligations."""
     try:
-        result = list_overdue(_get_db_from_state(state or {}))
+        result = list_overdue(
+            _get_db_from_state(state or {}),
+            owner_id=_get_owner_id_from_state(state or {}),
+        )
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
@@ -202,7 +236,10 @@ def list_overdue_tool(state: Annotated[dict[str, Any], InjectedState] = None) ->
 def get_shop_analytics_tool(state: Annotated[dict[str, Any], InjectedState] = None) -> str:
     """Use for overall shop summary such as outstanding amount, balances, average debt, and analytics overview."""
     try:
-        result = get_shop_analytics(_get_db_from_state(state or {}))
+        result = get_shop_analytics(
+            _get_db_from_state(state or {}),
+            owner_id=_get_owner_id_from_state(state or {}),
+        )
         return json.dumps(result)
     except Exception as exc:  # pragma: no cover
         return json.dumps({"error": f"Tool execution failed: {str(exc)}"})
@@ -297,10 +334,16 @@ def _extract_last_assistant(messages: list[AnyMessage]) -> str:
     return "I could not complete that request right now. Please try again."
 
 
-async def run_khata_chat(message: str, history: list[dict[str, str]], db_session: Session) -> dict[str, Any]:
+async def run_khata_chat(
+    message: str,
+    history: list[dict[str, str]],
+    db_session: Session,
+    owner_id: UUIDType,
+) -> dict[str, Any]:
     inputs = {
         "messages": [*_to_langgraph_history(history), HumanMessage(content=message)],
         "db": db_session,
+        "owner_id": owner_id,
     }
 
     try:
@@ -320,10 +363,17 @@ async def run_khata_chat(message: str, history: list[dict[str, str]], db_session
     }
 
 
-def chat_with_tools(*, message: str, history: list[dict[str, str]], db: Session) -> tuple[str, list[dict[str, str]]]:
+def chat_with_tools(
+    *,
+    message: str,
+    history: list[dict[str, str]],
+    db: Session,
+    owner_id: UUIDType,
+) -> tuple[str, list[dict[str, str]]]:
     inputs = {
         "messages": [*_to_langgraph_history(history), HumanMessage(content=message)],
         "db": db,
+        "owner_id": owner_id,
     }
 
     try:
