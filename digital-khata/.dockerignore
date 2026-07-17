@@ -1,0 +1,27 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment (dependencies are installed fresh inside the container)
+.venv/
+
+# Environment file (secrets must be set via HF Spaces Repository Secrets, NOT baked into the image)
+.env
+
+# Git files
+.git/
+.gitignore
+
+# Editor and OS files
+.vscode/
+.DS_Store
+
+# Test/lint cache
+.pytest_cache/
+.mypy_cache/
+
+# Docker files themselves (no need to copy into the image)
+Dockerfile
+.dockerignore
