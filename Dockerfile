@@ -4,15 +4,16 @@ FROM python:3.11-slim
 # Set working directory inside the container
 WORKDIR /app
 
-# Copy requirements first for better layer caching
+# Copy requirements first for better layer caching (from the digital-khata subfolder)
 # This layer is only rebuilt when requirements.txt changes
-COPY requirements.txt .
+COPY digital-khata/requirements.txt .
 
 # Install dependencies (no pip cache to keep image size small)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the project into /app
-COPY . .
+# Copy the app contents (digital-khata/) directly into /app
+# This means /app/app/, /app/frontend/, etc. — exactly what uvicorn expects
+COPY digital-khata/ .
 
 # Document that the app listens on port 7860 (required by Hugging Face Spaces)
 EXPOSE 7860
