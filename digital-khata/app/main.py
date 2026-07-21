@@ -7,7 +7,7 @@ from app.models import customer, shop_owner, transaction  # noqa: F401
 from app.routers import analytics, auth, chat, customers, self_view, transactions
 
 
-app = FastAPI(title="Digital Khata Assistant", version="0.1.0")
+app = FastAPI(title="AI Ledger Assistant", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,

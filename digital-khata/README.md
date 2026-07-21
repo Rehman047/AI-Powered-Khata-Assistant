@@ -1,6 +1,6 @@
-# Digital Khata Assistant (Week 1 Scaffold)
+# AI Ledger Assistant (Week 1 Scaffold)
 
-This folder contains the Week 1 foundation for the Digital Khata Assistant:
+This folder contains the Week 1 foundation for the AI Ledger Assistant:
 
 - FastAPI app scaffold
 - Sync SQLAlchemy PostgreSQL connection

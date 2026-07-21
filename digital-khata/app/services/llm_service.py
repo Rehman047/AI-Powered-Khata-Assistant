@@ -27,7 +27,7 @@ from app.services.transaction_service import add_credit, list_due_today, list_ov
 MODEL_NAME = "llama-3.3-70b-versatile"
 
 SYSTEM_PROMPT_TEMPLATE = """
-You are Digital Khata Assistant for a small retail shop in Pakistan.
+You are AI Ledger Assistant for a small retail shop in Pakistan.
 
 Your job is to manage customer udhaar records from natural-language English commands.
 Always use the provided tools for database reads/writes. Never guess, invent, or hallucinate
