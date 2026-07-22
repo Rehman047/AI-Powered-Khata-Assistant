@@ -915,6 +915,137 @@ img, canvas {
 .chat-actions {
   display: flex;
   gap: var(--sp-2);
+  align-items: center;
+}
+
+/* ============================================================
+   Voice Input Button
+   ============================================================ */
+
+.voice-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 150ms var(--ease), border-color 150ms var(--ease), color 150ms var(--ease), box-shadow 150ms var(--ease);
+  flex-shrink: 0;
+}
+
+.voice-button:hover:not(:disabled) {
+  background: var(--purple-hover);
+  border-color: var(--purple-500);
+  color: var(--purple-100);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
+}
+
+.voice-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.voice-button__icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: transform 150ms var(--ease);
+}
+
+.voice-button__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Recording state */
+.voice-button--recording {
+  background: linear-gradient(135deg, var(--rose-700), #e11d48);
+  border-color: var(--rose-700);
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.5), 0 0 40px rgba(244, 63, 94, 0.2);
+  animation: voice-pulse 1.5s ease-in-out infinite;
+}
+
+.voice-button--recording:hover {
+  background: linear-gradient(135deg, #e11d48, var(--rose-700));
+  border-color: var(--rose-700);
+  box-shadow: 0 0 25px rgba(244, 63, 94, 0.6);
+}
+
+@keyframes voice-pulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.4), 0 0 30px rgba(244, 63, 94, 0.15);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(244, 63, 94, 0.6), 0 0 50px rgba(244, 63, 94, 0.3);
+    transform: scale(1.05);
+  }
+}
+
+/* Processing (transcribing) state */
+.voice-button--processing {
+  background: var(--purple-700);
+  border-color: var(--purple-500);
+  color: #ffffff;
+  pointer-events: none;
+}
+
+.voice-button--processing .voice-button__icon {
+  animation: voice-spin 1s linear infinite;
+}
+
+@keyframes voice-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Success flash */
+.voice-button--success {
+  background: var(--purple-600);
+  border-color: var(--purple-400);
+  color: #ffffff;
+  animation: voice-success-flash 0.4s ease;
+}
+
+@keyframes voice-success-flash {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); box-shadow: 0 0 30px rgba(168, 85, 247, 0.6); }
+  100% { transform: scale(1); }
+}
+
+/* Error state */
+.voice-button--error {
+  background: var(--surface-muted);
+  border-color: var(--rose-700);
+  color: var(--rose-700);
+  animation: voice-shake 0.4s ease;
+}
+
+@keyframes voice-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* Hidden state for unsupported browsers */
+.voice-button--hidden {
+  display: none;
 }
 
 .primary-button,

@@ -71,6 +71,10 @@ function showToast(message, type = "error") {
   }, 3200);
 }
 
+function showInfoToast(message) {
+  showToast(message, "success");
+}
+
 function getAuthToken() {
   return localStorage.getItem(AUTH_TOKEN_KEY) || "";
 }
@@ -656,7 +660,279 @@ function cacheElements() {
   elements.drawerName = document.getElementById("drawerName");
   elements.closeDrawerButton = document.getElementById("closeDrawerButton");
   elements.toastStack = document.getElementById("toastStack");
+  elements.voiceInputButton = document.getElementById("voiceInputButton");
+  elements.voiceStatus = document.getElementById("voiceStatus");
 }
+
+/* ============================================================
+   Voice Controller — Speech-to-Text Input
+   ============================================================ */
+
+const VoiceController = {
+  isSupported: false,
+  state: "idle", // idle | recording | processing
+  recognition: null,
+  _finalTranscript: "",
+  _maxRecordTimer: null,
+
+  /**
+   * Initializes voice controller. Detects browser support,
+   * sets up SpeechRecognition, and wires the mic button.
+   * Should be called once during app init.
+   */
+  init() {
+    const SpeechRecognitionClass =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    this.isSupported = !!SpeechRecognitionClass;
+
+    if (!this.isSupported) {
+      // Hide the microphone button for unsupported browsers
+      elements.voiceInputButton.classList.add("voice-button--hidden");
+      return;
+    }
+
+    this.recognition = new SpeechRecognitionClass();
+    this.recognition.continuous = false;
+    this.recognition.interimResults = true;
+    this.recognition.lang = "en-US";
+
+    this.recognition.addEventListener("result", (event) =>
+      this._onResult(event),
+    );
+    this.recognition.addEventListener("error", (event) =>
+      this._onError(event),
+    );
+    this.recognition.addEventListener("end", () => this._onEnd());
+
+    elements.voiceInputButton.addEventListener("click", () =>
+      this._onButtonClick(),
+    );
+  },
+
+  /* ---- Public API ---- */
+
+  start() {
+    if (this.state === "recording" || this.state === "processing") return;
+
+    this.state = "recording";
+    this._finalTranscript = "";
+    this._setUIState("recording");
+    this._setInputsDisabled(true);
+
+    // Clear existing input text on fresh recording
+    elements.chatInput.value = "";
+
+    try {
+      this.recognition.start();
+
+      // Auto-stop after 120 seconds (2 minutes) max duration
+      this._maxRecordTimer = window.setTimeout(() => {
+        if (this.state === "recording") {
+          this.stop();
+          showInfoToast("Maximum recording duration (2 min) reached.");
+        }
+      }, 120000);
+    } catch (err) {
+      this._handleError("Failed to start recording. Please try again.");
+    }
+  },
+
+  stop() {
+    if (this.state !== "recording") return;
+
+    this.state = "processing";
+    this._setUIState("processing");
+
+    try {
+      this.recognition.stop();
+    } catch (err) {
+      this._handleError("Failed to stop recording.");
+    }
+  },
+
+  /* ---- Private handlers ---- */
+
+  _onButtonClick() {
+    if (this.state === "recording") {
+      this.stop();
+    } else {
+      this.start();
+    }
+  },
+
+  _onResult(event) {
+    let interim = "";
+    let final = "";
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        final += transcript;
+      } else {
+        interim += transcript;
+      }
+    }
+
+    // Show interim results in textarea for live feedback
+    if (interim) {
+      elements.chatInput.value = interim;
+    }
+
+    // Accumulate final transcript parts
+    this._finalTranscript += final;
+  },
+
+  _onEnd() {
+    this._clearMaxRecordTimer();
+    const finalText = this._finalTranscript.trim();
+
+    if (finalText) {
+      elements.chatInput.value = finalText;
+      elements.chatInput.focus();
+      this._setUIState("success");
+      this._finalTranscript = "";
+
+      // Return to idle after brief success animation
+      window.setTimeout(() => {
+        this.state = "idle";
+        this._setUIState("idle");
+        this._setInputsDisabled(false);
+      }, 500);
+    } else {
+      // No speech detected or empty result
+      this._handleError("No speech detected. Please try again or type your message.");
+      this._finalTranscript = "";
+    }
+  },
+
+  _onError(event) {
+    let message = "Voice input failed. Please try again.";
+
+    switch (event.error) {
+      case "no-speech":
+        message =
+          "No speech detected. Please try again or type your message.";
+        break;
+      case "aborted":
+        message = "Recording was cancelled.";
+        break;
+      case "audio-capture":
+        message =
+          "No microphone detected. Please connect a microphone or use text input.";
+        break;
+      case "network":
+        message =
+          "Network error occurred during transcription. Please try again.";
+        break;
+      case "not-allowed":
+        message =
+          "Microphone permission denied. Using text input instead.";
+        break;
+      case "service-not-allowed":
+        message =
+          "Speech recognition is not available. Using text input instead.";
+        break;
+      case "bad-grammar":
+      case "language-not-supported":
+        message =
+          "This language is not supported for voice input. Try English or use text input.";
+        break;
+    }
+
+    this._handleError(message);
+    this._finalTranscript = "";
+  },
+
+  _handleError(message) {
+    this._clearMaxRecordTimer();
+    this.state = "idle";
+    this._setUIState("error");
+    this._setInputsDisabled(false);
+    showToast(message, "error");
+
+    // Return to idle after error animation
+    window.setTimeout(() => {
+      this._setUIState("idle");
+    }, 800);
+  },
+
+  /* ---- Timer Helpers ---- */
+
+  _clearMaxRecordTimer() {
+    if (this._maxRecordTimer) {
+      window.clearTimeout(this._maxRecordTimer);
+      this._maxRecordTimer = null;
+    }
+  },
+
+  /* ---- UI Helpers ---- */
+
+  _setUIState(uiState) {
+    const btn = elements.voiceInputButton;
+
+    // Remove all state classes
+    btn.classList.remove(
+      "voice-button--recording",
+      "voice-button--processing",
+      "voice-button--success",
+      "voice-button--error",
+    );
+
+    switch (uiState) {
+      case "recording":
+        btn.classList.add("voice-button--recording");
+        btn.setAttribute("aria-label", "Stop voice recording");
+        btn.title = "Click to stop recording";
+        elements.voiceStatus.textContent =
+          "Recording... Speak now. Click to stop.";
+        break;
+      case "processing":
+        btn.classList.add("voice-button--processing");
+        btn.setAttribute("aria-label", "Transcribing speech...");
+        btn.title = "Transcribing...";
+        elements.voiceStatus.textContent = "Transcribing speech...";
+        break;
+      case "success":
+        btn.classList.add("voice-button--success");
+        btn.setAttribute("aria-label", "Voice input completed successfully");
+        btn.title = "Click to start voice recording";
+        elements.voiceStatus.textContent = "Voice input completed.";
+        break;
+      case "error":
+        btn.classList.add("voice-button--error");
+        btn.setAttribute("aria-label", "Voice input failed");
+        btn.title = "Click to try again";
+        elements.voiceStatus.textContent = "Voice input failed.";
+        break;
+      default:
+        // idle
+        btn.setAttribute("aria-label", "Start voice input");
+        btn.title = "Click to start voice recording";
+        elements.voiceStatus.textContent = "";
+        break;
+    }
+  },
+
+  _setInputsDisabled(disabled) {
+    elements.chatInput.disabled = disabled;
+    // Don't disable Send/Clear during voice since we want them available
+    // after transcription completes, but do during recording
+    if (disabled && this.state === "recording") {
+      elements.sendChatButton.disabled = true;
+      elements.clearChatButton.disabled = true;
+    } else if (!disabled) {
+      // Only re-enable if chat isn't busy from a send operation
+      if (!state.chatBusy) {
+        elements.sendChatButton.disabled = false;
+        elements.clearChatButton.disabled = false;
+      }
+    }
+  },
+};
+
+/* ============================================================
+   Initialization
+   ============================================================ */
 
 async function init() {
   cacheElements();
@@ -664,6 +940,7 @@ async function init() {
   renderChatHistory();
   renderSummaryCards();
   wireEvents();
+  VoiceController.init();
 
   const token = getAuthToken();
   if (!token) {
